@@ -137,6 +137,153 @@
             </div>
 
         </section>
+        <!-- =========================
+     RESULTS DASHBOARD
+========================= -->
+<section id="resultsDashboard" class="results-dashboard">
+
+    <div class="results-topbar">
+        <button id="newAnalysisBtn" class="new-analysis-btn">
+            ← NEW ANALYSIS
+        </button>
+
+        <div class="analysis-complete">
+            <span class="complete-dot"></span>
+            ANALYSIS COMPLETE
+        </div>
+    </div>
+
+
+    <div class="results-heading">
+        <p class="section-label">SCREENING RESULTS</p>
+
+        <h2>Diabetic Retinopathy Analysis</h2>
+
+        <p>
+            AI-assisted screening results based on retinal image analysis.
+        </p>
+    </div>
+
+
+    <!-- RESULT CARDS -->
+    <div class="result-cards">
+
+        <div class="result-card">
+            <p>IMAGE QUALITY</p>
+            <h3 class="good-result">GOOD</h3>
+            <span>Suitable for analysis</span>
+        </div>
+
+        <div class="result-card">
+            <p>DR SEVERITY</p>
+            <h3>MODERATE</h3>
+            <span>Non-Proliferative DR</span>
+        </div>
+
+        <div class="result-card">
+            <p>CONFIDENCE</p>
+            <h3>91.4%</h3>
+            <span>Model prediction confidence</span>
+        </div>
+
+        <div class="result-card">
+            <p>REFERABLE DR</p>
+            <h3 class="warning-result">YES</h3>
+            <span>Clinical referral recommended</span>
+        </div>
+
+    </div>
+
+
+    <!-- IMAGE ANALYSIS -->
+    <div class="image-analysis-grid">
+
+        <div class="analysis-image-card">
+            <div class="card-heading">
+                <div>
+                    <p class="section-label">INPUT</p>
+                    <h3>Original Retinal Image</h3>
+                </div>
+            </div>
+
+            <div class="result-image-container">
+                <img id="resultOriginalImage" alt="Uploaded retinal image">
+            </div>
+        </div>
+
+
+        <div class="analysis-image-card">
+            <div class="card-heading">
+                <div>
+                    <p class="section-label">EXPLAINABLE AI</p>
+                    <h3>AI Attention Map</h3>
+                </div>
+
+                <span class="demo-tag">DEMO</span>
+            </div>
+
+            <div class="gradcam-placeholder">
+                <div class="scan-circle">
+                    <span>AI</span>
+                </div>
+
+                <p>Grad-CAM visualization will appear here</p>
+
+                <small>
+                    Highlights retinal regions influencing the AI prediction
+                </small>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- FINDINGS + RECOMMENDATION -->
+    <div class="results-bottom-grid">
+
+        <div class="findings-card">
+            <p class="section-label">DETECTED FINDINGS</p>
+
+            <h3>Screening Evidence</h3>
+
+            <ul>
+                <li>
+                    <span class="finding-dot"></span>
+                    Microaneurysm-like features detected
+                </li>
+
+                <li>
+                    <span class="finding-dot"></span>
+                    Abnormal retinal lesions identified
+                </li>
+
+                <li>
+                    <span class="finding-dot"></span>
+                    Findings consistent with moderate DR
+                </li>
+            </ul>
+        </div>
+
+
+        <div class="recommendation-card">
+            <p class="section-label">RECOMMENDATION</p>
+
+            <h3>Specialist Review Recommended</h3>
+
+            <p>
+                The screening result indicates potentially referable diabetic
+                retinopathy. Consultation with an ophthalmologist is recommended.
+            </p>
+
+            <div class="recommendation-note">
+                This result is intended for screening support and does not
+                replace professional medical diagnosis.
+            </div>
+        </div>
+
+    </div>
+
+</section>
 
     </main>
 

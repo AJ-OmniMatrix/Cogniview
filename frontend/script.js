@@ -4,52 +4,107 @@ const uploadContent = document.getElementById("uploadContent");
 const fileName = document.getElementById("fileName");
 const analyzeBtn = document.getElementById("analyzeBtn");
 
+const resultsDashboard = document.getElementById("resultsDashboard");
+const resultOriginalImage = document.getElementById("resultOriginalImage");
+const newAnalysisBtn = document.getElementById("newAnalysisBtn");
 
-// When the user selects an image
+let uploadedImageURL = "";
+
+
+// =========================
+// IMAGE UPLOAD
+// =========================
+
 imageInput.addEventListener("change", function () {
 
     const file = this.files[0];
 
     if (!file) return;
 
-    // Show the file name
+    // Show filename
     fileName.textContent = file.name;
 
-    // Create image preview
-    const imageURL = URL.createObjectURL(file);
+    // Create image URL
+    uploadedImageURL = URL.createObjectURL(file);
 
-    imagePreview.src = imageURL;
+    // Show preview on upload page
+    imagePreview.src = uploadedImageURL;
     imagePreview.style.display = "block";
 
-    // Hide upload text
+    // Hide upload instructions
     uploadContent.style.display = "none";
 
-    // Enable Analyze button
+    // Enable analyze button
     analyzeBtn.disabled = false;
 });
 
 
-// Analyze button clicked
+// =========================
+// ANALYZE IMAGE
+// =========================
+
 analyzeBtn.addEventListener("click", function () {
 
-    // Change button while "analyzing"
+    // Show analyzing state
     analyzeBtn.textContent = "ANALYZING...";
     analyzeBtn.disabled = true;
 
     // Simulate AI analysis for now
     setTimeout(function () {
 
-        alert(
-            "Analysis Complete!\n\n" +
-            "Image Quality: Good\n" +
-            "DR Severity: Moderate NPDR\n" +
-            "Confidence: 91.4%\n" +
-            "Referable DR: Yes"
-        );
+        // Put the uploaded image in the results dashboard
+        resultOriginalImage.src = uploadedImageURL;
 
+        // Show results dashboard
+        resultsDashboard.classList.add("active");
+
+        // Scroll smoothly to results
+        resultsDashboard.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+
+        // Restore button
         analyzeBtn.textContent = "ANALYZE RETINA →";
         analyzeBtn.disabled = false;
 
     }, 2000);
+
+});
+
+
+// =========================
+// NEW ANALYSIS
+// =========================
+
+newAnalysisBtn.addEventListener("click", function () {
+
+    // Hide results
+    resultsDashboard.classList.remove("active");
+
+    // Reset file input
+    imageInput.value = "";
+
+    // Reset preview
+    imagePreview.src = "";
+    imagePreview.style.display = "none";
+
+    // Show upload instructions again
+    uploadContent.style.display = "block";
+
+    // Reset filename
+    fileName.textContent = "No image selected";
+
+    // Disable analyze button
+    analyzeBtn.disabled = true;
+
+    // Clear stored image
+    uploadedImageURL = "";
+
+    // Scroll back to top
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
 
 });
