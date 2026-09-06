@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Cogniview | Diabetic Retinopathy Screening</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">
+            <div class="logo-icon">◉</div>
+            <span>Cogni<span class="highlight">view</span></span>
+        </div>
+
+        <div class="nav-status">
+            <span class="status-dot"></span>
+            AI SCREENING SYSTEM
+        </div>
+    </nav>
+
+
+    <!-- Main Hero Section -->
+    <main class="container">
+
+        <section class="hero">
+
+            <div class="badge">EXPLAINABLE AI FOR EARLY DETECTION</div>
+
+            <h1>
+                See beyond the surface.<br>
+                <span>Detect earlier.</span>
+            </h1>
+
+            <p class="hero-text">
+                AI-powered diabetic retinopathy screening using retinal image
+                analysis, lesion detection, and explainable deep learning.
+            </p>
+
+        </section>
+
+
+        <!-- Upload Card -->
+        <section class="upload-card">
+
+            <div class="upload-header">
+                <div>
+                    <p class="section-label">NEW SCREENING</p>
+                    <h2>Upload Retinal Image</h2>
+                </div>
+
+                <div class="secure-label">
+                    🔒 Secure Analysis
+                </div>
+            </div>
+
+
+            <label for="imageInput" class="upload-area">
+
+                <div id="uploadContent">
+                    <div class="upload-icon">↑</div>
+
+                    <h3>Drop a fundus image here</h3>
+
+                    <p>
+                        or <span>browse from your device</span>
+                    </p>
+
+                    <small>Supported formats: JPG, JPEG, PNG</small>
+                </div>
+
+                <img id="imagePreview" alt="Retinal image preview">
+
+            </label>
+
+            <input
+                type="file"
+                id="imageInput"
+                accept=".jpg,.jpeg,.png"
+                hidden
+            >
+
+
+            <div class="upload-footer">
+                <p id="fileName">No image selected</p>
+
+                <button id="analyzeBtn" disabled>
+                    ANALYZE RETINA →
+                </button>
+            </div>
+
+        </section>
+
+
+        <!-- Pipeline Preview -->
+        <section class="pipeline">
+
+            <p class="section-label">ANALYSIS PIPELINE</p>
+
+            <div class="pipeline-steps">
+
+                <div class="pipeline-step">
+                    <span>01</span>
+                    <h3>Quality Check</h3>
+                    <p>Validate retinal image quality</p>
+                </div>
+
+                <div class="pipeline-line"></div>
+
+                <div class="pipeline-step">
+                    <span>02</span>
+                    <h3>Lesion Detection</h3>
+                    <p>Identify possible abnormalities</p>
+                </div>
+
+                <div class="pipeline-line"></div>
+
+                <div class="pipeline-step">
+                    <span>03</span>
+                    <h3>DR Grading</h3>
+                    <p>Estimate disease severity</p>
+                </div>
+
+                <div class="pipeline-line"></div>
+
+                <div class="pipeline-step">
+                    <span>04</span>
+                    <h3>Explainability</h3>
+                    <p>Visualize AI decision regions</p>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+        <p>Cogniview — Explainable AI for Diabetic Retinopathy Screening</p>
+        <p class="disclaimer">
+            For research and screening support only. Not a medical diagnosis.
+        </p>
+    </footer>
+
+
+    <script src="script.js"></script>
+
+</body>
+</html>
