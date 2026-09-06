@@ -1,0 +1,427 @@
+%% step03_train_vessel_segmentation.m
+% DRIVE retinal vessel segmentation
+% MATLAB R2026a
+%
+% U-Net + weighted Binary Cross-Entropy + Dice loss
+%
+% Does NOT require:
+%   pixelLabelDatastore
+%   unetLayers
+%   Computer Vision Toolbox
+%
+% Uses:
+%   Deep Learning Toolbox
+%   Image Processing Toolbox
+
+clear;
+clc;
+
+%% ------------------------------------------------------------
+% 1. Project paths
+% ------------------------------------------------------------
+
+projectRoot = fullfile(pwd, 'DR_Project');
+
+imgDir = fullfile(projectRoot, ...
+    'data', 'drive', 'training', 'images');
+
+maskDir = fullfile(projectRoot, ...
+    'data', 'drive', 'training', '1st_manual');
+
+assert(exist(imgDir,'dir') == 7, ...
+    'DRIVE image folder not found.');
+
+assert(exist(maskDir,'dir') == 7, ...
+    'DRIVE mask folder not found.');
+
+fprintf('DRIVE images: %s\n', imgDir);
+fprintf('DRIVE masks : %s\n', maskDir);
+
+%% ------------------------------------------------------------
+% 2. Find files
+% ------------------------------------------------------------
+
+imgFiles = dir(fullfile(imgDir,'*.tif'));
+maskFiles = dir(fullfile(maskDir,'*.gif'));
+
+[~,idx] = sort({imgFiles.name});
+imgFiles = imgFiles(idx);
+
+[~,idx] = sort({maskFiles.name});
+maskFiles = maskFiles(idx);
+
+fprintf('Images found: %d\n',numel(imgFiles));
+fprintf('Masks found : %d\n',numel(maskFiles));
+
+assert(numel(imgFiles) == numel(maskFiles), ...
+    'Image/mask count mismatch.');
+
+%% ------------------------------------------------------------
+% 3. Load DRIVE data into memory
+% ------------------------------------------------------------
+
+inputSize = [256 256 3];
+N = numel(imgFiles);
+
+X = zeros(256,256,3,N,'single');
+T = zeros(256,256,1,N,'single');
+
+fprintf('\nLoading DRIVE dataset...\n');
+
+for i = 1:N
+
+    % ----- Image -----
+    img = imread(fullfile(imgDir,imgFiles(i).name));
+
+    if size(img,3) == 1
+        img = repmat(img,1,1,3);
+    end
+
+    img = imresize(img,[256 256]);
+
+    % Convert image to single [0,1]
+    img = im2single(img);
+
+    X(:,:,:,i) = img;
+
+    % ----- Vessel mask -----
+    mask = imread(fullfile(maskDir,maskFiles(i).name));
+
+    if ndims(mask) == 3
+        mask = rgb2gray(mask);
+    end
+
+    mask = imresize(mask,[256 256],'nearest');
+
+    % Non-zero = vessel
+    mask = mask > 0;
+
+    T(:,:,1,i) = single(mask);
+
+end
+
+fprintf('Dataset loaded successfully.\n');
+fprintf('X size: %s\n',mat2str(size(X)));
+fprintf('T size: %s\n',mat2str(size(T)));
+
+%% ------------------------------------------------------------
+% 4. Check vessel percentage
+% ------------------------------------------------------------
+
+vesselFraction = mean(T(:));
+backgroundFraction = 1 - vesselFraction;
+
+fprintf('\nVessel pixels: %.2f%%\n', ...
+    vesselFraction*100);
+
+fprintf('Background pixels: %.2f%%\n', ...
+    backgroundFraction*100);
+
+% Automatically choose a reasonable positive-class weight.
+posWeight = sqrt(backgroundFraction / ...
+    max(vesselFraction,1e-6));
+
+posWeight = min(max(posWeight,2),10);
+
+fprintf('Positive-class weight: %.2f\n',posWeight);
+
+%% ------------------------------------------------------------
+% 5. Build U-Net
+% ------------------------------------------------------------
+
+fprintf('\nBuilding U-Net...\n');
+
+lgraph = layerGraph();
+
+%% Input
+
+inputLayer = imageInputLayer(inputSize, ...
+    'Normalization','none', ...
+    'Name','input');
+
+lgraph = addLayers(lgraph,inputLayer);
+
+%% Encoder 1
+
+enc1 = [
+    convolution2dLayer(3,32,'Padding','same', ...
+        'Name','enc1_conv1')
+    reluLayer('Name','enc1_relu1')
+
+    convolution2dLayer(3,32,'Padding','same', ...
+        'Name','enc1_conv2')
+    reluLayer('Name','enc1_relu2')
+];
+
+lgraph = addLayers(lgraph,enc1);
+
+pool1 = maxPooling2dLayer(2,'Stride',2, ...
+    'Name','pool1');
+
+lgraph = addLayers(lgraph,pool1);
+
+%% Encoder 2
+
+enc2 = [
+    convolution2dLayer(3,64,'Padding','same', ...
+        'Name','enc2_conv1')
+    reluLayer('Name','enc2_relu1')
+
+    convolution2dLayer(3,64,'Padding','same', ...
+        'Name','enc2_conv2')
+    reluLayer('Name','enc2_relu2')
+];
+
+lgraph = addLayers(lgraph,enc2);
+
+pool2 = maxPooling2dLayer(2,'Stride',2, ...
+    'Name','pool2');
+
+lgraph = addLayers(lgraph,pool2);
+
+%% Encoder 3
+
+enc3 = [
+    convolution2dLayer(3,128,'Padding','same', ...
+        'Name','enc3_conv1')
+    reluLayer('Name','enc3_relu1')
+
+    convolution2dLayer(3,128,'Padding','same', ...
+        'Name','enc3_conv2')
+    reluLayer('Name','enc3_relu2')
+];
+
+lgraph = addLayers(lgraph,enc3);
+
+pool3 = maxPooling2dLayer(2,'Stride',2, ...
+    'Name','pool3');
+
+lgraph = addLayers(lgraph,pool3);
+
+%% Bottleneck
+
+bottleneck = [
+    convolution2dLayer(3,256,'Padding','same', ...
+        'Name','bottleneck_conv1')
+    reluLayer('Name','bottleneck_relu1')
+
+    convolution2dLayer(3,256,'Padding','same', ...
+        'Name','bottleneck_conv2')
+    reluLayer('Name','bottleneck_relu2')
+];
+
+lgraph = addLayers(lgraph,bottleneck);
+
+%% Decoder 3
+
+up3 = transposedConv2dLayer(2,128, ...
+    'Stride',2, ...
+    'Name','up3');
+
+skip3 = concatenationLayer(2,2,'Name','skip3');
+dec3 = [
+    convolution2dLayer(3,128,'Padding','same', ...
+        'Name','dec3_conv1')
+    reluLayer('Name','dec3_relu1')
+
+    convolution2dLayer(3,128,'Padding','same', ...
+        'Name','dec3_conv2')
+    reluLayer('Name','dec3_relu2')
+];
+
+lgraph = addLayers(lgraph,up3);
+lgraph = addLayers(lgraph,skip3);
+lgraph = addLayers(lgraph,dec3);
+
+%% Decoder 2
+
+up2 = transposedConv2dLayer(2,64, ...
+    'Stride',2, ...
+    'Name','up2');
+
+skip2 = concatenationLayer(2,2,'Name','skip2');
+
+dec2 = [
+    convolution2dLayer(3,64,'Padding','same', ...
+        'Name','dec2_conv1')
+    reluLayer('Name','dec2_relu1')
+
+    convolution2dLayer(3,64,'Padding','same', ...
+        'Name','dec2_conv2')
+    reluLayer('Name','dec2_relu2')
+];
+
+lgraph = addLayers(lgraph,up2);
+lgraph = addLayers(lgraph,skip2);
+lgraph = addLayers(lgraph,dec2);
+
+%% Decoder 1
+
+up1 = transposedConv2dLayer(2,32, ...
+    'Stride',2, ...
+    'Name','up1');
+
+skip1 = concatenationLayer(2,2,'Name','skip1');
+
+dec1 = [
+    convolution2dLayer(3,32,'Padding','same', ...
+        'Name','dec1_conv1')
+    reluLayer('Name','dec1_relu1')
+
+    convolution2dLayer(3,32,'Padding','same', ...
+        'Name','dec1_conv2')
+    reluLayer('Name','dec1_relu2')
+];
+
+lgraph = addLayers(lgraph,up1);
+lgraph = addLayers(lgraph,skip1);
+lgraph = addLayers(lgraph,dec1);
+
+%% Output
+%
+% IMPORTANT:
+% We output logits here.
+% The sigmoid is applied inside the custom loss.
+
+outputLayer = convolution2dLayer(1,1, ...
+    'Name','vessel_logits');
+
+lgraph = addLayers(lgraph,outputLayer);
+
+%% ------------------------------------------------------------
+% 6. Connect U-Net
+% ------------------------------------------------------------
+
+lgraph = connectLayers(lgraph,'input','enc1_conv1');
+
+lgraph = connectLayers(lgraph,'enc1_relu2','pool1');
+lgraph = connectLayers(lgraph,'enc1_relu2','skip1/in2');
+
+lgraph = connectLayers(lgraph,'pool1','enc2_conv1');
+
+lgraph = connectLayers(lgraph,'enc2_relu2','pool2');
+lgraph = connectLayers(lgraph,'enc2_relu2','skip2/in2');
+
+lgraph = connectLayers(lgraph,'pool2','enc3_conv1');
+
+lgraph = connectLayers(lgraph,'enc3_relu2','pool3');
+lgraph = connectLayers(lgraph,'enc3_relu2','skip3/in2');
+
+lgraph = connectLayers(lgraph,'pool3','bottleneck_conv1');
+
+lgraph = connectLayers(lgraph,'bottleneck_relu2','up3');
+lgraph = connectLayers(lgraph,'up3','skip3/in1');
+lgraph = connectLayers(lgraph,'skip3','dec3_conv1');
+
+lgraph = connectLayers(lgraph,'dec3_relu2','up2');
+lgraph = connectLayers(lgraph,'up2','skip2/in1');
+lgraph = connectLayers(lgraph,'skip2','dec2_conv1');
+
+lgraph = connectLayers(lgraph,'dec2_relu2','up1');
+lgraph = connectLayers(lgraph,'up1','skip1/in1');
+lgraph = connectLayers(lgraph,'skip1','dec1_conv1');
+
+lgraph = connectLayers(lgraph,'dec1_relu2','vessel_logits');
+
+fprintf('U-Net architecture created successfully.\n');
+
+%% ------------------------------------------------------------
+% 7. Convert to dlnetwork
+% ------------------------------------------------------------
+
+net = dlnetwork(lgraph);
+
+fprintf('dlnetwork created successfully.\n');
+
+%% ------------------------------------------------------------
+% 8. Custom segmentation loss
+% ------------------------------------------------------------
+
+lossFcn = @(Y,T) vesselSegmentationLoss( ...
+    Y,T,posWeight);
+
+%% ------------------------------------------------------------
+% 9. Training options
+% ------------------------------------------------------------
+
+% Short smoke test first.
+options = trainingOptions('adam', ...
+    'InitialLearnRate',1e-3, ...
+    'MaxEpochs',2, ...
+    'MiniBatchSize',2, ...
+    'Shuffle','every-epoch', ...
+    'ExecutionEnvironment','cpu', ...
+    'Plots','training-progress', ...
+    'Verbose',true, ...
+    'VerboseFrequency',1, ...
+    'InputDataFormats','SSCB', ...
+    'TargetDataFormats','SSCB');
+
+%% ------------------------------------------------------------
+% 10. Smoke-test training
+% ------------------------------------------------------------
+
+fprintf('\n============================================\n');
+fprintf('Starting improved U-Net smoke test...\n');
+fprintf('Loss: weighted BCE + Dice\n');
+fprintf('Epochs: 2\n');
+fprintf('Batch size: 2\n');
+fprintf('Hardware: CPU\n');
+fprintf('============================================\n\n');
+
+[net,info] = trainnet( ...
+    X,T,net,lossFcn,options);
+
+%% ------------------------------------------------------------
+% 11. Save smoke-test model
+% ------------------------------------------------------------
+
+modelsDir = fullfile(projectRoot,'models');
+
+if ~exist(modelsDir,'dir')
+    mkdir(modelsDir);
+end
+
+save(fullfile(modelsDir,'vessel_net_smoketest.mat'), ...
+    'net','inputSize','posWeight','info');
+
+fprintf('\n============================================\n');
+fprintf('Smoke-test training completed.\n');
+fprintf('Saved: %s\n', ...
+    fullfile(modelsDir,'vessel_net_smoketest.mat'));
+fprintf('============================================\n');
+
+
+%% ============================================================
+% Local loss function
+% ============================================================
+
+function loss = vesselSegmentationLoss(Y,T,posWeight)
+
+    % Convert logits to probabilities.
+    P = sigmoid(Y);
+
+    epsVal = 1e-6;
+
+    % Weighted binary cross-entropy.
+    bce = -mean( ...
+        posWeight .* T .* log(P + epsVal) + ...
+        (1 - T) .* log(1 - P + epsVal), ...
+        'all');
+
+    % Dice loss.
+    intersection = sum(P .* T,'all');
+
+    denominator = sum(P,'all') + ...
+                  sum(T,'all');
+
+    diceScore = ...
+        (2 .* intersection + 1) ./ ...
+        (denominator + 1);
+
+    diceLoss = 1 - diceScore;
+
+    % Combined loss.
+    loss = 0.6 .* bce + 0.4 .* diceLoss;
+
+end
